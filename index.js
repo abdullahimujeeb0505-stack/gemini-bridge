@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleGenAI } = require("@google/genai");
 const { McpServer } = require("@modelcontextprotocol/sdk/server/mcp.js");
 const { StreamableHTTPServerTransport } = require("@modelcontextprotocol/sdk/server/streamableHttp.js");
 const { z } = require("zod");
@@ -13,7 +14,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Normal health check
 app.get("/", (req, res) => {
-  res.send("Blockfirm bridge is running 🚀");
+  res.send("Gemini bridge is running 🚀");
 });
 
 // Existing REST endpoint
@@ -24,7 +25,7 @@ app.post("/ask", async (req, res) => {
     });
 
     const result = await model.generateContent(
-      req.body.prompt || "Hello from Blockfirm bridge"
+      req.body.prompt || "Hello from Gemini bridge"
     );
 
     res.json({
@@ -40,13 +41,13 @@ app.post("/ask", async (req, res) => {
 
 // MCP server
 const mcp = new McpServer({
-  name: "Blockfirm Bridge",
+  name: "Gemini Bridge",
   version: "1.0.0"
 });
 
 mcp.tool(
   "ask_gemini",
-  "Send a prompt to Gemini through the Blockfirm bridge.",
+  "Send a prompt to Gemini through the Gemini bridge.",
   {
     prompt: z.string().describe("The prompt to send to Gemini")
   },
@@ -81,6 +82,72 @@ mcp.tool(
   }
 );
 
+mcp.tool(
+  "generate_image",
+  "Generate a real image using Gemini Nano Banana 2. Returns the generated image as base64 data.",
+  {
+    prompt: z.string().describe("Detailed description of the image to generate"),
+    aspect_ratio: z.string().optional().describe("Image aspect ratio, for example 16:9, 1:1, or 9:16"),
+    image_size: z.string().optional().describe("Image size: 1K, 2K, or 4K")
+  },
+  async ({ prompt, aspect_ratio, image_size }) => {
+    try {
+      const ai = new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY
+      });
+
+      const interaction = await ai.interactions.create({
+        model: "gemini-3.1-flash-image",
+        input: prompt,
+        response_format: {
+          type: "image",
+          aspect_ratio: aspect_ratio || "1:1",
+          image_size: image_size || "1K"
+        }
+      });
+
+      if (!interaction.output_image) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: interaction.output_text || "Gemini did not return an image."
+            }
+          ],
+          isError: true
+        };
+      }
+
+      return {
+        content: [
+          {
+            type: "image",
+            data: interaction.output_image.data,
+            mimeType: interaction.output_image.mime_type || "image/png"
+          },
+          {
+            type: "text",
+            text: interaction.output_text || "Image generated successfully."
+          }
+        ]
+      };
+
+    } catch (error) {
+      console.error("Image generation error:", error);
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: "Image generation error: " + error.message
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+);
+
 // MCP HTTP endpoint
 app.all("/mcp", async (req, res) => {
   const transport = new StreamableHTTPServerTransport({
@@ -98,5 +165,5 @@ app.all("/mcp", async (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`Blockfirm bridge running on port ${PORT}`);
+  console.log(`Gemini bridge running on port ${PORT}`);
 });
