@@ -51,7 +51,7 @@ import { log } from "./utils/logger.js";
 /**
  * Main MCP Server Class
  */
-class GeminiMCPServer {
+export class GeminiMCPServer {
   private server: Server;
   private authManager: AuthManager;
   private sessionManager: SessionManager;
@@ -388,6 +388,10 @@ class GeminiMCPServer {
       log.error(`Reason: ${reason}`);
       requestShutdown("unhandledRejection");
     });
+  }
+
+  getServer(): Server {
+    return this.server;
   }
 
   /**
