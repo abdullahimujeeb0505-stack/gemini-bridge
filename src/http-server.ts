@@ -30,7 +30,7 @@ app.all("/mcp", async (req: Request, res: Response) => {
   try {
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
 
-    // Existing MCP session
+    // Existing session
     if (sessionId) {
       const session = sessions.get(sessionId);
 
@@ -50,12 +50,26 @@ app.all("/mcp", async (req: Request, res: Response) => {
       return;
     }
 
-    // New MCP session
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => crypto.randomUUID(),
-    });
+    // New session
+    let createdSession: Session | undefined;
 
     const gemini = new GeminiMCPServer();
+
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => crypto.randomUUID(),
+
+      onsessioninitialized: (newSessionId) => {
+        if (createdSession) {
+          sessions.set(newSessionId, createdSession);
+          console.error(`🔗 MCP session created: ${newSessionId}`);
+        }
+      },
+    });
+
+    createdSession = {
+      transport,
+      gemini,
+    };
 
     transport.onclose = () => {
       if (transport.sessionId) {
@@ -67,16 +81,6 @@ app.all("/mcp", async (req: Request, res: Response) => {
     await gemini.getServer().connect(transport);
 
     await transport.handleRequest(req, res, req.body);
-
-    // The session ID is generated during initialization.
-    if (transport.sessionId) {
-      sessions.set(transport.sessionId, {
-        transport,
-        gemini,
-      });
-
-      console.error(`🔗 MCP session created: ${transport.sessionId}`);
-    }
   } catch (error) {
     console.error("MCP HTTP error:", error);
 
