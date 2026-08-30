@@ -2,6 +2,7 @@
 
 import crypto from "node:crypto";
 import express, { Request, Response } from "express";
+import { createProxyMiddleware } from "http-proxy-middleware";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { GeminiMCPServer } from "./index.js";
 
@@ -16,6 +17,16 @@ type Session = {
 };
 
 const sessions = new Map<string, Session>();
+
+// Expose remote authentication through the public Railway port.
+app.use(
+  "/auth",
+  createProxyMiddleware({
+    target: "http://127.0.0.1:3001",
+    changeOrigin: true,
+    pathRewrite: { "^/auth": "" },
+  })
+);
 
 app.get("/", (_req: Request, res: Response) => {
   res.json({
