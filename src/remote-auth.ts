@@ -220,7 +220,7 @@ app.post("/type", async (req, res) => {
 
   const text = String(req.body.text || "");
 
-  await page.keyboard.type(text, { delay: 30 });
+  const input=page.locator('input[type="email"], input[name="identifier"]').first(); if(await input.count()) await input.fill(text); else await page.keyboard.type(text,{delay:30});
 
   const screenshot = await page.screenshot({ type: "png" });
 
