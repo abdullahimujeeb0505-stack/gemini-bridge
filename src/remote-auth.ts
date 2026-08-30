@@ -75,7 +75,7 @@ img{max-width:100%;border:1px solid #555;border-radius:10px;margin-top:15px}
 const token = new URLSearchParams(location.search).get("token");
 const headers = {"Authorization":"Bearer "+token,"Content-Type":"application/json"};
 
-async function api(path, body) {
+async function api("/auth"+path, body) {
   const r = await fetch(path, {
     method: body ? "POST" : "GET",
     headers,
